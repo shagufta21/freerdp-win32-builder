@@ -1,0 +1,144 @@
+diff --git a/client/Windows/wfreerdp.rc b/client/Windows/wfreerdp.rc
+index cec908f46..8446477b3 100644
+--- a/client/Windows/wfreerdp.rc
++++ b/client/Windows/wfreerdp.rc
+@@ -2,13 +2,13 @@
+ #include "resource.h"
+ 
+ IDI_ICON1              ICON                    "FreeRDP.ico"
+-IDB_MINIMIZE           BITMAP                  "resource\\minimize.bmp"
+-IDB_MINIMIZE_ACT       BITMAP                  "resource\\minimize_active.bmp"
+-IDB_LOCK               BITMAP                  "resource\\lock.bmp"
+-IDB_LOCK_ACT           BITMAP                  "resource\\lock_active.bmp"
+-IDB_UNLOCK             BITMAP                  "resource\\unlock.bmp"
+-IDB_UNLOCK_ACT         BITMAP                  "resource\\unlock_active.bmp"
+-IDB_CLOSE              BITMAP                  "resource\\close.bmp"
+-IDB_CLOSE_ACT          BITMAP                  "resource\\close_active.bmp"
+-IDB_RESTORE            BITMAP                  "resource\\restore.bmp"
+-IDB_RESTORE_ACT        BITMAP                  "resource\\restore_active.bmp"
++IDB_MINIMIZE           BITMAP                  "resource/minimize.bmp"
++IDB_MINIMIZE_ACT       BITMAP                  "resource/minimize_active.bmp"
++IDB_LOCK               BITMAP                  "resource/lock.bmp"
++IDB_LOCK_ACT           BITMAP                  "resource/lock_active.bmp"
++IDB_UNLOCK             BITMAP                  "resource/unlock.bmp"
++IDB_UNLOCK_ACT         BITMAP                  "resource/unlock_active.bmp"
++IDB_CLOSE              BITMAP                  "resource/close.bmp"
++IDB_CLOSE_ACT          BITMAP                  "resource/close_active.bmp"
++IDB_RESTORE            BITMAP                  "resource/restore.bmp"
++IDB_RESTORE_ACT        BITMAP                  "resource/restore_active.bmp"
+diff --git a/winpr/include/winpr/spec.h b/winpr/include/winpr/spec.h
+index d1a2d740a..7c610ebbf 100644
+--- a/winpr/include/winpr/spec.h
++++ b/winpr/include/winpr/spec.h
+@@ -1,3 +1,4 @@
++
+ /**
+  * WinPR: Windows Portable Runtime
+  * Compiler Specification Strings
+@@ -967,8 +968,10 @@ extern "C++"
+ 
+ #if defined(_WIN32) || defined(__CYGWIN__)
+ #ifdef __GNUC__
++#ifndef __MINGW32__
+ #define DECLSPEC_EXPORT __attribute__((dllexport))
+ #define DECLSPEC_IMPORT __attribute__((dllimport))
++#endif
+ #else
+ #define DECLSPEC_EXPORT __declspec(dllexport)
+ #define DECLSPEC_IMPORT __declspec(dllimport)
+diff --git a/winpr/include/winpr/sspi.h b/winpr/include/winpr/sspi.h
+index 71b168b43..74f3aa538 100644
+--- a/winpr/include/winpr/sspi.h
++++ b/winpr/include/winpr/sspi.h
+@@ -334,6 +334,8 @@ struct _SEC_CHANNEL_BINDINGS
+ };
+ typedef struct _SEC_CHANNEL_BINDINGS SEC_CHANNEL_BINDINGS;
+ 
++#endif
++#if !defined(_WIN32) || defined(_UWP) || defined(__MINGW32__)
+ struct _SecPkgContext_Bindings
+ {
+        UINT32 BindingsLength;
+@@ -341,6 +343,8 @@ struct _SecPkgContext_Bindings
+ };
+ typedef struct _SecPkgContext_Bindings SecPkgContext_Bindings;
+ 
++#endif
++#if !defined(_WIN32) || defined(_UWP)
+ struct _SecPkgContext_EapKeyBlock
+ {
+        BYTE rgbKeys[128];
+diff --git a/winpr/include/winpr/wtypes.h.in b/winpr/include/winpr/wtypes.h.in
+index e4ee27a5b..90c2c940f 100644
+--- a/winpr/include/winpr/wtypes.h.in
++++ b/winpr/include/winpr/wtypes.h.in
+@@ -574,6 +574,22 @@ typedef const BYTE* LPCBYTE;
+ #define _ftelli64(fp) ftello(fp)
+ #endif
+ 
++#ifdef __MINGW32__
++#define RPC_S_PROXY_ACCESS_DENIED __MSABI_LONG(1729)
++#define RPC_S_COOKIE_AUTH_FAILED __MSABI_LONG(1833)
++#define RPC_S_DO_NOT_DISTURB __MSABI_LONG(1834)
++#define RPC_S_SYSTEM_HANDLE_COUNT_EXCEEDED __MSABI_LONG(1835)
++#define RPC_S_SYSTEM_HANDLE_TYPE_MISMATCH __MSABI_LONG(1836)
++
++#define SCARD_E_PIN_CACHE_EXPIRED _HRESULT_TYPEDEF_(0x80100032)
++#define SCARD_E_NO_PIN_CACHE _HRESULT_TYPEDEF_(0x80100033)
++#define SCARD_E_READ_ONLY_CARD _HRESULT_TYPEDEF_(0x80100034)
++#define SCARD_W_CACHE_ITEM_TOO_BIG _HRESULT_TYPEDEF_(0x80100072)
++
++#define WAVE_MAPPED_DEFAULT_COMMUNICATION_DEVICE (0x0010)
++#undef interface
++#endif
++
+ #if defined(__clang__)
+ #pragma clang diagnostic pop
+ #endif
+diff --git a/winpr/libwinpr/sspi/NTLM/ntlm.h b/winpr/libwinpr/sspi/NTLM/ntlm.h
+index 21ae893a3..ffde2b3cd 100644
+--- a/winpr/libwinpr/sspi/NTLM/ntlm.h
++++ b/winpr/libwinpr/sspi/NTLM/ntlm.h
+@@ -1,3 +1,4 @@
++
+ /**
+  * WinPR: Windows Portable Runtime
+  * NTLM Security Package
+@@ -77,6 +78,7 @@ enum _NTLM_STATE
+ };
+ typedef enum _NTLM_STATE NTLM_STATE;
+ 
++#ifndef __MINGW32__
+ enum _NTLM_AV_ID
+ {
+        MsvAvEOL,
+@@ -91,6 +93,16 @@ enum _NTLM_AV_ID
+        MsvAvTargetName,
+        MsvAvChannelBindings
+ };
++#else
++enum _NTLM_AV_ID
++{
++        MinGw_NTLM_AV_ID_0
++};
++#define MsvAvTimestamp (MsvAvFlags + 1)
++#define MsvAvSingleHost (MsvAvTimestamp + 1)
++#define MsvAvTargetName (MsvAvSingleHost + 1)
++#define MsvAvChannelBindings (MsvAvTargetName + 1)
++#endif
+ typedef enum _NTLM_AV_ID NTLM_AV_ID;
+ 
+ struct _NTLM_AV_PAIR
+diff --git a/winpr/libwinpr/wtsapi/wtsapi.c b/winpr/libwinpr/wtsapi/wtsapi.c
+index 04c59f9fa..24da90ada 100644
+--- a/winpr/libwinpr/wtsapi/wtsapi.c
++++ b/winpr/libwinpr/wtsapi/wtsapi.c
+@@ -53,7 +53,7 @@ static HMODULE g_WtsApi32Module = NULL;
+ static WtsApiFunctionTable WtsApi32_WtsApiFunctionTable = { 0 };
+ 
+ #define WTSAPI32_LOAD_PROC(_name, _type)                                                   \
+-       WtsApi32_WtsApiFunctionTable.p##_name = (##_type)GetProcAddress(g_WtsApi32Module, "WT" \
++       WtsApi32_WtsApiFunctionTable.p##_name = (_type)GetProcAddress(g_WtsApi32Module, "WT" \
+                                                                                          "S" #_name);
+ 
+ static BOOL WtsApi32_InitializeWtsApi(void)
