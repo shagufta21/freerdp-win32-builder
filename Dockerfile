@@ -15,7 +15,8 @@ RUN git clone https://github.com/alexandru-bagu/FreeRDP.git /src/FreeRDP
 
 # SETUP TOOLCHAIN
 COPY toolchain/ /src/toolchain
-ENV TOOLCHAIN_ARCH=x86_64
+ARG ARCH
+ENV TOOLCHAIN_ARCH=$ARCH
 ENV TOOLCHAIN_NAME=$TOOLCHAIN_ARCH-w64-mingw32
 ENV TOOLCHAIN_CMAKE=/src/toolchain/$TOOLCHAIN_NAME-toolchain.cmake
 
