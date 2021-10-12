@@ -11,7 +11,7 @@ WORKDIR /src
 RUN git clone https://github.com/madler/zlib.git /src/zlib
 RUN git clone https://github.com/janbar/openssl-cmake.git /src/openssl
 RUN git clone https://github.com/libusb/libusb.git /src/libusb
-RUN git clone https://github.com/FreeRDP/FreeRDP.git /src/FreeRDP
+RUN git clone https://github.com/alexandru-bagu/FreeRDP.git /src/FreeRDP
 
 # SETUP TOOLCHAIN
 COPY toolchain/ /src/toolchain
@@ -48,7 +48,7 @@ RUN make -j `nproc` && make install
 COPY patch/ /src/patch
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP
-RUN git fetch; git checkout 96cf17a45b2c1070f681272edc0ef87826f51b30
+RUN git fetch; git checkout 39cffae61aad012710de4710ff33eeedaba7f5da
 RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
 RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build -DWITH_X11=OFF \
@@ -56,7 +56,7 @@ RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_I
              -DOPENSSL_INCLUDE_DIR=/build/include \
              -DLIBUSB_1_INCLUDE_DIRS=/build/include/libusb-1.0 \
              -DLIBUSB_1_LIBRARIES=/build/lib/libusb-1.0.a \
-             -DWITH_WINPR_TOOLS=OFF \
+             -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=ON \
              -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -static"
 RUN cmake --build . -j `nproc`
 RUN cmake --install . 
