@@ -1,0 +1,21 @@
+diff --git a/build/platform-mingw_nt.mk b/build/platform-mingw_nt.mk
+index 0639df9b..b8f1fa7b 100644
+--- a/build/platform-mingw_nt.mk
++++ b/build/platform-mingw_nt.mk
+@@ -14,7 +14,14 @@ CC = x86_64-w64-mingw32-gcc
+ CXX = x86_64-w64-mingw32-g++
+ AR = x86_64-w64-mingw32-ar
+ else
+-ASMFLAGS += -f win32 -DPREFIX
++  ifeq ($(ARCH), i686)
++  ASMFLAGS += -f win32 -DPREFIX
++  CC = i686-w64-mingw32-gcc
++  CXX = i686-w64-mingw32-g++
++  AR = i686-w64-mingw32-ar
++  else
++  ASMFLAGS += -f win32 -DPREFIX
++  endif
+ endif
+ EXEEXT = .exe
+ 
+ 

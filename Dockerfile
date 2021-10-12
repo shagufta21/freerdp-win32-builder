@@ -1,7 +1,7 @@
 # SETUP WORKSPACE
 FROM archlinux:latest
 RUN yes | pacman -Syu
-RUN yes | pacman -S which make cmake git ninja autoconf automake libtool texinfo help2man
+RUN yes | pacman -S which make cmake nasm git ninja autoconf automake libtool texinfo help2man
 RUN pacman -S mingw-w64 --noconfirm
 
 RUN mkdir /src
@@ -10,11 +10,13 @@ WORKDIR /src
 # CHECKOUT REPOSITORIES
 RUN git clone https://github.com/madler/zlib.git /src/zlib
 RUN git clone https://github.com/janbar/openssl-cmake.git /src/openssl
+RUN git clone https://github.com/cisco/openh264 /src/openh264
 RUN git clone https://github.com/libusb/libusb.git /src/libusb
 RUN git clone https://github.com/alexandru-bagu/FreeRDP.git /src/FreeRDP
 
 # SETUP TOOLCHAIN
 COPY toolchain/ /src/toolchain
+COPY patch/ /src/patch
 ARG ARCH
 ENV TOOLCHAIN_ARCH=$ARCH
 ENV TOOLCHAIN_NAME=$TOOLCHAIN_ARCH-w64-mingw32
@@ -38,6 +40,13 @@ RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_I
 RUN cmake --build . -j `nproc`
 RUN cmake --install . 
 
+# BUILD OPENH264
+WORKDIR /src/openh264
+RUN git fetch; git checkout 50a1fcf70fafe962c526749991cb4646406933ba
+RUN git apply /src/patch/mingw32-openh64.patch
+RUN make OS=mingw_nt ARCH=$ARCH LDFLAGS=-static -j `nproc`
+RUN make OS=mingw_nt PREFIX=/build install
+
 # BUILD LIBUSB
 WORKDIR /src/libusb
 RUN git fetch; git checkout c6a35c56016ea2ab2f19115d2ea1e85e0edae155
@@ -46,14 +55,16 @@ RUN ./configure --host=$TOOLCHAIN_NAME --prefix=/build
 RUN make -j `nproc` && make install
 
 # BUILD FREERDP
-COPY patch/ /src/patch
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP
 RUN git fetch; git checkout 39cffae61aad012710de4710ff33eeedaba7f5da
 RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
-RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build -DWITH_X11=OFF \
-             -DWITH_ZLIB=ON -DZLIB_INCLUDE_DIR=/build -DBUILD_SHARED_LIBS=OFF \
+RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
+            -DWITH_X11=OFF -DBUILD_SHARED_LIBS=OFF \
+             -DWITH_ZLIB=ON -DZLIB_INCLUDE_DIR=/build \
+             -DWITH_OPENH264=ON -DOPENH264_INCLUDE_DIR=/build/include \
+             -DOPENH264_LIBRARY=/build/lib/libopenh264.dll.a -DWITH_MEDIAFOUNDATION=OFF \
              -DOPENSSL_INCLUDE_DIR=/build/include \
              -DLIBUSB_1_INCLUDE_DIRS=/build/include/libusb-1.0 \
              -DLIBUSB_1_LIBRARIES=/build/lib/libusb-1.0.a \
