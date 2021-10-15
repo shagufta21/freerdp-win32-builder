@@ -56,13 +56,31 @@ RUN mkdir m4; autoreconf -ivf
 RUN ./configure --host=$TOOLCHAIN_NAME --prefix=/build
 RUN make -j `nproc` && make install
 
-# BUILD FFMPEG
-FROM builder AS ffmpeg-build
-RUN git clone https://github.com/FFmpeg/FFmpeg /src/FFmpeg
-WORKDIR /src/FFmpeg
-RUN git fetch; git checkout dc91b913b6260e85e1304c74ff7bb3c22a8c9fb1
-RUN ./configure --arch=$TOOLCHAIN_ARCH --target-os=mingw32 --cross-prefix=$TOOLCHAIN_NAME- --prefix=/build  --extra-cflags=" -w "  --extra-cxxflags=" -w " --enable-dxva2
+# BUILD FAAC
+FROM builder AS faac-build
+RUN git clone https://github.com/knik0/faac.git /src/faac
+WORKDIR /src/faac
+RUN git fetch; git checkout 78d8e0141600ac006a94ac6fd5601f599fa5b65b
+RUN mkdir m4; autoreconf -ivf
+RUN ./configure --host=$TOOLCHAIN_NAME --prefix=/build
 RUN make -j `nproc` && make install
+
+# BUILD FAAD2
+FROM builder AS faad2-build
+RUN git clone https://github.com/knik0/faad2.git /src/faad2
+WORKDIR /src/faad2
+RUN git fetch; git checkout f97f6e933a4ee3cf00b4e1ba4e3a1f05bc9de165
+RUN mkdir m4; autoreconf -ivf
+RUN ./configure --host=$TOOLCHAIN_NAME --prefix=/build
+RUN make -j `nproc` && make install
+
+# # BUILD FFMPEG
+# FROM builder AS ffmpeg-build
+# RUN git clone https://github.com/FFmpeg/FFmpeg /src/FFmpeg
+# WORKDIR /src/FFmpeg
+# RUN git fetch; git checkout dc91b913b6260e85e1304c74ff7bb3c22a8c9fb1
+# RUN ./configure --arch=$TOOLCHAIN_ARCH --target-os=mingw32 --cross-prefix=$TOOLCHAIN_NAME- --prefix=/build  --extra-cflags=" -w "  --extra-cxxflags=" -w " --enable-dxva2
+# RUN make -j `nproc` && make install
 
 # BUILD FREERDP
 FROM builder AS freerdp-build
@@ -71,10 +89,11 @@ COPY --from=zlib-build /build /build
 COPY --from=openssl-build /build /build
 COPY --from=openh264-build /build /build
 COPY --from=libusb-build /build /build
-COPY --from=ffmpeg-build /build /build
+COPY --from=faac-build /build /build
+COPY --from=faad2-build /build /build
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP
-RUN git fetch; git checkout 21a12ff6e55ba5245c564a55b09578a5338d7aac
+RUN git fetch; git checkout c577bd9c4492e67c8fc5d698487d2f4b51b1e8d1
 COPY patch/mingw32-freerdp.patch /src/patch/
 RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
@@ -87,15 +106,8 @@ RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_I
              -DLIBUSB_1_INCLUDE_DIRS=/build/include/libusb-1.0 \
              -DLIBUSB_1_LIBRARIES=/build/lib/libusb-1.0.a \
              -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=ON \
-             -DWITH_FFMPEG=ON -DWITH_DSP_FFMPEG=ON -DWITH_SWSCALE=ON \
-             -DAVCODEC_INCLUDE_DIR=/build/include \
-             -DAVCODEC_LIBRARY=/build/lib/libavcodec.a \
-             -DAVUTIL_INCLUDE_DIR=/build/include \
-             -DAVUTIL_LIBRARY=/build/lib/libavutil.a \
-             -DSWRESAMPLE_INCLUDE_DIR=/build/include \
-             -DSWRESAMPLE_LIBRARY=/build/lib/libswresample.a \
-             -DSWScale_INCLUDE_DIR=/build/include \
-             -DSWScale_LIBRARY=/build/lib/libswscale.a \
+             -DWITH_FAAD2=ON -DFAAD2_INCLUDE_DIR=/build/include -DFAAD2_LIBRARY=/build/lib/libfaad.a \
+             -DWITH_FAAC=ON -DFAAC_INCLUDE_DIR=/build/include -DFAAC_LIBRARY=/build/lib/libfaac.a \
              -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -static"
 RUN cmake --build . -j `nproc`
 RUN cmake --install . 
