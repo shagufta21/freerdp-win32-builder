@@ -74,13 +74,34 @@ RUN mkdir m4; autoreconf -ivf
 RUN ./configure --host=$TOOLCHAIN_NAME --prefix=/build
 RUN make -j `nproc` && make install
 
-# # BUILD FFMPEG
-# FROM builder AS ffmpeg-build
-# RUN git clone https://github.com/FFmpeg/FFmpeg /src/FFmpeg
-# WORKDIR /src/FFmpeg
-# RUN git fetch; git checkout dc91b913b6260e85e1304c74ff7bb3c22a8c9fb1
-# RUN ./configure --arch=$TOOLCHAIN_ARCH --target-os=mingw32 --cross-prefix=$TOOLCHAIN_NAME- --prefix=/build  --extra-cflags=" -w "  --extra-cxxflags=" -w " --enable-dxva2
-# RUN make -j `nproc` && make install
+# BUILD OPENCL-HEADERS
+FROM builder AS opencl-headers
+RUN git clone https://github.com/KhronosGroup/OpenCL-Headers.git /src/opencl-headers
+WORKDIR /src/opencl-headers
+RUN git fetch; git checkout 1bb9ec797d14abed6167e3a3d66ede25a702a5c7
+RUN mkdir /src/opencl-headers/build
+WORKDIR /src/opencl-headers/build
+RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
+             -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+RUN cmake --build . -j `nproc`
+RUN cmake --install . 
+
+# BUILD OPENCL
+FROM builder AS opencl-build
+COPY --from=opencl-headers /build /build
+RUN git clone https://github.com/KhronosGroup/OpenCL-ICD-Loader.git /src/opencl
+WORKDIR /src/opencl
+RUN git fetch; git checkout 4e65bd5db0a0a87637fddc081a70d537fc2a9e70
+RUN echo 'set_target_properties (OpenCL PROPERTIES PREFIX "")' >> CMakeLists.txt
+RUN mkdir /src/opencl/build
+WORKDIR /src/opencl/build
+RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
+             -DBUILD_SHARED_LIBS=ON -DOPENCL_ICD_LOADER_DISABLE_OPENCLON12=ON  \
+             -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+             -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -I/build/include/" \
+             -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -I/build/include/"
+RUN cmake --build . -j `nproc`
+RUN cmake --install . 
 
 # BUILD FREERDP
 FROM builder AS freerdp-build
@@ -91,9 +112,10 @@ COPY --from=openh264-build /build /build
 COPY --from=libusb-build /build /build
 COPY --from=faac-build /build /build
 COPY --from=faad2-build /build /build
+COPY --from=opencl-build /build /build
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP
-RUN git fetch; git checkout b811aaca4b5779277839d45c27494ffc7897c96d
+RUN git fetch; git checkout af366fd09be4906976e2eb9fa04735045c8d575a
 COPY patch/mingw32-freerdp.patch /src/patch/
 RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
@@ -103,11 +125,13 @@ RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_I
              -DWITH_OPENH264=ON -DOPENH264_INCLUDE_DIR=/build/include \
              -DOPENH264_LIBRARY=/build/lib/libopenh264.dll.a -DWITH_MEDIA_FOUNDATION=OFF \
              -DOPENSSL_INCLUDE_DIR=/build/include \
+             -DOpenCL_INCLUDE_DIR=/build/include \
              -DLIBUSB_1_INCLUDE_DIRS=/build/include/libusb-1.0 \
              -DLIBUSB_1_LIBRARIES=/build/lib/libusb-1.0.a \
-             -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=OFF -DWITH_PROGRESS_BAR=OFF \
+             -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=ON -DWITH_PROGRESS_BAR=OFF \
              -DWITH_FAAD2=ON -DFAAD2_INCLUDE_DIR=/build/include -DFAAD2_LIBRARY=/build/lib/libfaad.a \
              -DWITH_FAAC=ON -DFAAC_INCLUDE_DIR=/build/include -DFAAC_LIBRARY=/build/lib/libfaac.a \
+             -DWITH_OPENCL=ON \
              -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -static"
 RUN cmake --build . -j `nproc`
 RUN cmake --install . 
