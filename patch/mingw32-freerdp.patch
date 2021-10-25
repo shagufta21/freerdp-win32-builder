@@ -110,7 +110,7 @@ index 787120248..96e31a7b2 100644
  
  add_definitions(${WINPR_DEFINITIONS})
 +if (MINGW)
-+  winpr_library_add_public(msvcr120 ws2_32 mfplat strmiids)
++  winpr_library_add_public(msvcr120 ws2_32 mfplat strmiids cfgmgr32)
 +endif()
  target_link_libraries(${MODULE_NAME} PRIVATE ${WINPR_LIBS_PRIVATE} PUBLIC ${WINPR_LIBS_PUBLIC})
  install(TARGETS ${MODULE_NAME} COMPONENT libraries EXPORT WinPRTargets

@@ -96,7 +96,7 @@ RUN echo 'set_target_properties (OpenCL PROPERTIES PREFIX "")' >> CMakeLists.txt
 RUN mkdir /src/opencl/build
 WORKDIR /src/opencl/build
 RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
-             -DBUILD_SHARED_LIBS=ON -DOPENCL_ICD_LOADER_DISABLE_OPENCLON12=ON  \
+             -DBUILD_SHARED_LIBS=OFF -DOPENCL_ICD_LOADER_DISABLE_OPENCLON12=ON  \
              -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
              -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -I/build/include/" \
              -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -I/build/include/"
@@ -121,13 +121,11 @@ RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
 RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
              -DWITH_X11=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
-             -DWITH_ZLIB=ON -DZLIB_INCLUDE_DIR=/build \
-             -DWITH_OPENH264=ON -DOPENH264_INCLUDE_DIR=/build/include \
-             -DOPENH264_LIBRARY=/build/lib/libopenh264.dll.a -DWITH_MEDIA_FOUNDATION=OFF \
+             -DWITH_ZLIB=ON -DZLIB_INCLUDE_DIR=/build -DWITH_SSE2=ON  -DWITH_MEDIA_FOUNDATION=OFF \
+             -DWITH_OPENH264=ON -DOPENH264_INCLUDE_DIR=/build/include -DOPENH264_LIBRARY=/build/lib/libopenh264.dll.a \
              -DOPENSSL_INCLUDE_DIR=/build/include \
-             -DOpenCL_INCLUDE_DIR=/build/include \
-             -DLIBUSB_1_INCLUDE_DIRS=/build/include/libusb-1.0 \
-             -DLIBUSB_1_LIBRARIES=/build/lib/libusb-1.0.a \
+             -DOpenCL_INCLUDE_DIR=/build/include -DOpenCL_LIBRARIES=/build/lib/OpenCL.a \
+             -DLIBUSB_1_INCLUDE_DIRS=/build/include/libusb-1.0 -DLIBUSB_1_LIBRARIES=/build/lib/libusb-1.0.a \
              -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=ON -DWITH_PROGRESS_BAR=OFF \
              -DWITH_FAAD2=ON -DFAAD2_INCLUDE_DIR=/build/include -DFAAD2_LIBRARY=/build/lib/libfaad.a \
              -DWITH_FAAC=ON -DFAAC_INCLUDE_DIR=/build/include -DFAAC_LIBRARY=/build/lib/libfaac.a \
