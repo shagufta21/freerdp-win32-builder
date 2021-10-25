@@ -93,7 +93,7 @@ COPY --from=faac-build /build /build
 COPY --from=faad2-build /build /build
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP
-RUN git fetch; git checkout a2d33b844c898a5e190ed8e346a49b93d668d831
+RUN git fetch; git checkout b811aaca4b5779277839d45c27494ffc7897c96d
 COPY patch/mingw32-freerdp.patch /src/patch/
 RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
@@ -105,7 +105,7 @@ RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_I
              -DOPENSSL_INCLUDE_DIR=/build/include \
              -DLIBUSB_1_INCLUDE_DIRS=/build/include/libusb-1.0 \
              -DLIBUSB_1_LIBRARIES=/build/lib/libusb-1.0.a \
-             -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=ON \
+             -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=OFF -DWITH_PROGRESS_BAR=OFF \
              -DWITH_FAAD2=ON -DFAAD2_INCLUDE_DIR=/build/include -DFAAD2_LIBRARY=/build/lib/libfaad.a \
              -DWITH_FAAC=ON -DFAAC_INCLUDE_DIR=/build/include -DFAAC_LIBRARY=/build/lib/libfaac.a \
              -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -static"
