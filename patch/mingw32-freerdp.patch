@@ -26,6 +26,40 @@ index cec908f46..8446477b3 100644
 +IDB_CLOSE_ACT          BITMAP                  "resource/close_active.bmp"
 +IDB_RESTORE            BITMAP                  "resource/restore.bmp"
 +IDB_RESTORE_ACT        BITMAP                  "resource/restore_active.bmp"
+diff --git a/winpr/include/winpr/crt.h b/winpr/include/winpr/crt.h
+index 66aa4a79b..0b531a5c0 100644
+--- a/winpr/include/winpr/crt.h
++++ b/winpr/include/winpr/crt.h
+@@ -165,6 +165,13 @@ extern "C"
+ 	WINPR_API errno_t wmemmove_s(WCHAR* dest, size_t numberOfElements, const WCHAR* src,
+ 	                             size_t count);
+ 
++#endif
++#ifdef __MINGW32__
++	WINPR_API void* _mingw_aligned_recalloc(void* memblock, size_t num, size_t size, size_t alignment);
++#define _aligned_recalloc(MEMBLOCK,NUM,SIZE,ALIGNMENT) _mingw_aligned_recalloc(MEMBLOCK,NUM,SIZE,ALIGNMENT)
++#endif
++#ifdef _WIN32
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/winpr/include/winpr/intrin.h b/winpr/include/winpr/intrin.h
+index b6c3a48ce..1be85f7d5 100644
+--- a/winpr/include/winpr/intrin.h
++++ b/winpr/include/winpr/intrin.h
+@@ -31,7 +31,10 @@
+  * Beware: the result of __builtin_clz(0) is undefined
+  */
+ 
+-#if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2))
++#if defined(__MINGW32__) && !defined(__ARM_ARCH)
++#define __DEFAULT_FN_ATTRS __attribute__((__nodebug__, __target__("lzcnt")))
++static unsigned int __DEFAULT_FN_ATTRS __lzcnt(unsigned int __X) { return __builtin_ia32_lzcnt_u32(__X); }
++#elif (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2))
+ 
+ static INLINE UINT32 __lzcnt(UINT32 _val32)
+ {
 diff --git a/winpr/include/winpr/spec.h b/winpr/include/winpr/spec.h
 index d1a2d740a..1c5a86451 100644
 --- a/winpr/include/winpr/spec.h
@@ -46,7 +80,7 @@ index d1a2d740a..1c5a86451 100644
  
  #endif /* WINPR_SPEC_H */
 diff --git a/winpr/include/winpr/wtypes.h.in b/winpr/include/winpr/wtypes.h.in
-index e4ee27a5b..d05c3ca48 100644
+index e4ee27a5b..8f35a9e11 100644
 --- a/winpr/include/winpr/wtypes.h.in
 +++ b/winpr/include/winpr/wtypes.h.in
 @@ -578,4 +578,9 @@ typedef const BYTE* LPCBYTE;
@@ -59,6 +93,41 @@ index e4ee27a5b..d05c3ca48 100644
 +#endif
 +
  #endif /* WINPR_WTYPES_H */
+diff --git a/winpr/libwinpr/CMakeLists.txt b/winpr/libwinpr/CMakeLists.txt
+index 787120248..36a1fdadc 100644
+--- a/winpr/libwinpr/CMakeLists.txt
++++ b/winpr/libwinpr/CMakeLists.txt
+@@ -144,6 +144,9 @@ if (WITH_LIBRARY_VERSIONING)
+ endif()
+ 
+ add_definitions(${WINPR_DEFINITIONS})
++if (MINGW)
++  winpr_library_add_public(stdc++ ws2_32 mfplat strmiids cfgmgr32)
++endif()
+ target_link_libraries(${MODULE_NAME} PRIVATE ${WINPR_LIBS_PRIVATE} PUBLIC ${WINPR_LIBS_PUBLIC})
+ install(TARGETS ${MODULE_NAME} COMPONENT libraries EXPORT WinPRTargets
+         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+diff --git a/winpr/libwinpr/crt/alignment.c b/winpr/libwinpr/crt/alignment.c
+index 6d45d2d58..548898ef7 100644
+--- a/winpr/libwinpr/crt/alignment.c
++++ b/winpr/libwinpr/crt/alignment.c
+@@ -48,6 +48,16 @@
+ #include "../log.h"
+ #define TAG WINPR_TAG("crt")
+ 
++#endif
++#ifdef __MINGW32__
++void* _mingw_aligned_recalloc(void* memblock, size_t num, size_t size, size_t alignment)
++{
++       void* ptr = _aligned_offset_realloc(memblock, size, alignment, 0);
++       return ptr;
++}
++#endif
++#ifndef _WIN32
++
+ struct winpr_aligned_mem
+ {
+ 	UINT32 sig;
 diff --git a/winpr/libwinpr/sspi/NTLM/ntlm.h b/winpr/libwinpr/sspi/NTLM/ntlm.h
 index 21ae893a3..8ec8fce87 100644
 --- a/winpr/libwinpr/sspi/NTLM/ntlm.h
@@ -101,17 +170,3 @@ index 04c59f9fa..24da90ada 100644
  	                                                                                  "S" #_name);
  
  static BOOL WtsApi32_InitializeWtsApi(void)
-diff --git a/winpr/libwinpr/CMakeLists.txt b/winpr/libwinpr/CMakeLists.txt
-index 787120248..96e31a7b2 100644
---- a/winpr/libwinpr/CMakeLists.txt
-+++ b/winpr/libwinpr/CMakeLists.txt
-@@ -144,6 +144,9 @@ if (WITH_LIBRARY_VERSIONING)
- endif()
- 
- add_definitions(${WINPR_DEFINITIONS})
-+if (MINGW)
-+  winpr_library_add_public(msvcr120 ws2_32 mfplat strmiids cfgmgr32)
-+endif()
- target_link_libraries(${MODULE_NAME} PRIVATE ${WINPR_LIBS_PRIVATE} PUBLIC ${WINPR_LIBS_PUBLIC})
- install(TARGETS ${MODULE_NAME} COMPONENT libraries EXPORT WinPRTargets
-         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
