@@ -1,7 +1,7 @@
 FROM ubuntu:21.04 as builder
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq
-RUN apt-get install -y xz-utils wget make cmake nasm git ninja-build autoconf automake libtool texinfo help2man yasm gcc
+RUN apt-get install -y xz-utils wget make nasm git ninja-build autoconf automake libtool texinfo help2man yasm gcc
 
 # SETUP WORKSPACE
 WORKDIR /tmp
@@ -19,6 +19,7 @@ ARG ARCH
 ENV TOOLCHAIN_ARCH=$ARCH
 
 FROM builder as cmake-builder
+RUN apt-get install -y cmake
 COPY toolchain/cmake /src/toolchain/cmake
 ENV TOOLCHAIN_NAME=$TOOLCHAIN_ARCH-w64-mingw32
 ENV TOOLCHAIN_CMAKE=/src/toolchain/cmake/$TOOLCHAIN_NAME-toolchain.cmake
