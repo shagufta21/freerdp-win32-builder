@@ -140,7 +140,9 @@ RUN git fetch; git checkout af366fd09be4906976e2eb9fa04735045c8d575a
 COPY patch/mingw32-freerdp.patch /src/patch/
 RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
-RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
+ARG ARCH
+RUN /bin/bash -c "( [[ $ARCH == aarch64 ]] && printf 'arm64' || printf $ARCH ) > arch.txt"
+RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
              -DWITH_X11=OFF -DWITH_MEDIA_FOUNDATION=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
              -DWITH_ZLIB=ON -DZLIB_INCLUDE_DIR=/build  \
              -DWITH_OPENH264=ON -DOPENH264_INCLUDE_DIR=/build/include -DOPENH264_LIBRARY=/build/lib/libopenh264.a \
@@ -150,8 +152,8 @@ RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_I
              -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=ON -DWITH_PROGRESS_BAR=OFF \
              -DWITH_FAAD2=ON -DFAAD2_INCLUDE_DIR=/build/include -DFAAD2_LIBRARY=/build/lib/libfaad.a \
              -DWITH_FAAC=ON -DFAAC_INCLUDE_DIR=/build/include -DFAAC_LIBRARY=/build/lib/libfaac.a \
-             -DWITH_SSE2="$( [[ '$ARCH' == 'x86_64' ]] && printf 'ON'; [[ '$ARCH' == 'i686' ]] && printf 'ON'; [[ '$ARCH' == 'aarch64' ]] && printf 'OFF';  )" \
-             -DWITH_NEON="$( [[ '$ARCH' == 'x86_64' ]] && printf 'OFF'; [[ '$ARCH' == 'i686' ]] && printf 'OFF'; [[ '$ARCH' == 'aarch64' ]] && printf 'ON';  )" \
-             -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -static"
+						 -DCMAKE_SYSTEM_PROCESSOR=$( cat arch.txt ) \
+             -DCMAKE_C_FLAGS=\"${CMAKE_C_FLAGS} -static\" \
+						 "
 RUN cmake --build . -j `nproc`
 RUN cmake --install . 
