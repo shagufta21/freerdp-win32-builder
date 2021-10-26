@@ -136,7 +136,7 @@ COPY --from=faad2-build /build /build
 COPY --from=opencl-build /build /build
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP
-RUN git fetch; git checkout af366fd09be4906976e2eb9fa04735045c8d575a
+RUN git fetch; git checkout 35cce08365332d900d0017fa36247f1b2e920dcf
 COPY patch/mingw32-freerdp.patch /src/patch/
 RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
