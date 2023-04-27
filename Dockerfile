@@ -5,9 +5,9 @@ RUN apt-get install -y xz-utils wget make nasm git ninja-build autoconf automake
 
 # SETUP WORKSPACE
 WORKDIR /tmp
-RUN wget https://github.com/mstorsjo/llvm-mingw/releases/download/20230320/llvm-mingw-20230320-msvcrt-ubuntu-18.04-x86_64.tar.xz -O llvm.tar.xz && \
+RUN wget https://github.com/mstorsjo/llvm-mingw/releases/download/20230320/llvm-mingw-20230320-ucrt-ubuntu-18.04-x86_64.tar.xz -O llvm.tar.xz && \
   tar -xf llvm.tar.xz && \
-  cp -a /tmp/llvm-mingw-20230320-msvcrt-ubuntu-18.04-x86_64/* /usr/ && \
+  cp -a /tmp/llvm-mingw-20230320-ucrt-ubuntu-18.04-x86_64/* /usr/ && \
   rm -rf /tmp/*
 
 RUN mkdir /src
@@ -147,8 +147,8 @@ RUN sed -i 's/(\*fkt)(void\*)/(*fkt)(int,const char*,void*)/g' /src/FreeRDP/libf
 RUN sed -i 's/#ifndef __MINGW32__/#ifndef __MINGW32__BAD/g' /src/FreeRDP/include/freerdp/codec/audio.h
 RUN sed -i 's/freerdp_library_add(Credui)/freerdp_library_add(credui)/g' ../libfreerdp/utils/CMakeLists.txt
 RUN sed -i 's/if(WIN32)/if(WIN32)\n\tfreerdp_library_add(cfgmgr32)/g' ../libfreerdp/utils/CMakeLists.txt
-RUN sed -i 's/#define winpr_aligned_calloc/#define winpr_aligned_calloc_wronglocation/' ../winpr/include/winpr/crt.h
-RUN sed -i 's/#endif \/\* WINPR_CRT_H \*\//#ifndef _WIN32\n#define winpr_aligned_calloc(count, size, alignment) _aligned_recalloc ( NULL , count, size, alignment )\n#endif\n#endif/' ../winpr/include/winpr/crt.h
+#RUN sed -i 's/#define winpr_aligned_calloc/#define winpr_aligned_calloc_wronglocation/' ../winpr/include/winpr/crt.h
+#RUN sed -i 's/#endif \/\* WINPR_CRT_H \*\//#ifndef _WIN32\n#define winpr_aligned_calloc(count, size, alignment) _aligned_recalloc ( NULL , count, size, alignment )\n#endif\n#endif/' ../winpr/include/winpr/crt.h
 
 RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
              -DWITH_X11=OFF -DWITH_MEDIA_FOUNDATION=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
