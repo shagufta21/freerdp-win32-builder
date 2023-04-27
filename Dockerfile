@@ -1,13 +1,13 @@
-FROM ubuntu:21.04 as builder
+FROM ubuntu:22.04 as builder
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq
-RUN apt-get install -y xz-utils wget make nasm git ninja-build autoconf automake libtool texinfo help2man yasm gcc
+RUN apt-get install -y xz-utils wget make nasm git ninja-build autoconf automake libtool texinfo help2man yasm gcc pkg-config
 
 # SETUP WORKSPACE
 WORKDIR /tmp
-RUN wget https://github.com/mstorsjo/llvm-mingw/releases/download/20211002/llvm-mingw-20211002-msvcrt-ubuntu-18.04-x86_64.tar.xz -O llvm.tar.xz && \
+RUN wget https://github.com/mstorsjo/llvm-mingw/releases/download/20230320/llvm-mingw-20230320-msvcrt-ubuntu-18.04-x86_64.tar.xz -O llvm.tar.xz && \
   tar -xf llvm.tar.xz && \
-  cp -a /tmp/llvm-mingw-20211002-msvcrt-ubuntu-18.04-x86_64/* /usr/ && \
+  cp -a /tmp/llvm-mingw-20230320-msvcrt-ubuntu-18.04-x86_64/* /usr/ && \
   rm -rf /tmp/*
 
 RUN mkdir /src
@@ -33,7 +33,7 @@ ENV TOOLCHAIN_MESON=/src/toolchain/meson/$TOOLCHAIN_ARCH.txt
 FROM cmake-builder AS zlib-build
 RUN git clone https://github.com/madler/zlib.git /src/zlib
 WORKDIR /src/zlib
-RUN git fetch; git checkout cacf7f1d4e3d44d871b605da3b647f07d718623f
+RUN git fetch; git checkout 04f42ceca40f73e2978b50e93806c2a18c1281fc
 RUN mkdir /src/zlib/build
 WORKDIR /src/zlib/build
 RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build -DCMAKE_BUILD_TYPE=Release
@@ -55,18 +55,18 @@ RUN cmake --install .
 FROM meson-builder AS openh264-build
 RUN git clone https://github.com/cisco/openh264 /src/openh264
 WORKDIR /src/openh264
-RUN git fetch; git checkout df32196c72063e326c5b969e1c1a8933a750090f
+RUN git fetch; git checkout 0a48f4d2e9be2abb4fb01b4c3be83cf44ce91a6e
 RUN mkdir /src/openh264/out
 WORKDIR /src/openh264/out
 RUN meson .. . --cross-file $TOOLCHAIN_MESON --prefix=/build
 RUN ninja -j `nproc`
 RUN ninja install
 
-# BUILD LIBUSB
+# # BUILD LIBUSB
 FROM cmake-builder AS libusb-build
 RUN git clone https://github.com/libusb/libusb.git /src/libusb
 WORKDIR /src/libusb
-RUN git fetch; git checkout c6a35c56016ea2ab2f19115d2ea1e85e0edae155
+RUN git fetch; git checkout 4239bc3a50014b8e6a5a2a59df1fff3b7469543b
 RUN mkdir m4; autoreconf -ivf
 RUN sed -i.bak "s/-mwin32//g" ./configure
 RUN sed -i.bak "s/--add-stdcall-alias//g" ./configure
@@ -88,7 +88,7 @@ RUN make -j `nproc` && make install
 FROM cmake-builder AS faad2-build
 RUN git clone https://github.com/knik0/faad2.git /src/faad2
 WORKDIR /src/faad2
-RUN git fetch; git checkout f97f6e933a4ee3cf00b4e1ba4e3a1f05bc9de165
+RUN git fetch; git checkout 3918dee56063500d0aa23d6c3c94b211ac471a8c
 RUN sed -i.bak "s/-Wl,--add-stdcall-alias//g" ./libfaad/Makefile.am
 RUN mkdir m4; autoreconf -ivf
 RUN sed -i.bak "s/-mwin32//g" ./configure
@@ -99,7 +99,7 @@ RUN make -j `nproc` && make install
 FROM cmake-builder AS opencl-headers
 RUN git clone https://github.com/KhronosGroup/OpenCL-Headers.git /src/opencl-headers
 WORKDIR /src/opencl-headers
-RUN git fetch; git checkout 1bb9ec797d14abed6167e3a3d66ede25a702a5c7
+RUN git fetch; git checkout 4fdcfb0ae675f2f63a9add9552e0af62c2b4ed30
 RUN mkdir /src/opencl-headers/build
 WORKDIR /src/opencl-headers/build
 RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
@@ -112,7 +112,7 @@ FROM cmake-builder AS opencl-build
 COPY --from=opencl-headers /build /build
 RUN git clone https://github.com/KhronosGroup/OpenCL-ICD-Loader.git /src/opencl
 WORKDIR /src/opencl
-RUN git fetch; git checkout 4e65bd5db0a0a87637fddc081a70d537fc2a9e70
+RUN git fetch; git checkout b1bce7c3c580a8345205cf65fc1a5f55ba9cdb01
 RUN echo 'set_target_properties (OpenCL PROPERTIES PREFIX "")' >> CMakeLists.txt
 RUN mkdir /src/opencl/build
 WORKDIR /src/opencl/build
@@ -126,7 +126,7 @@ RUN cmake --install .
 
 # BUILD FREERDP
 FROM cmake-builder AS freerdp-build
-RUN git clone https://github.com/alexandru-bagu/FreeRDP.git /src/FreeRDP
+RUN git clone https://github.com/FreeRDP/FreeRDP.git /src/FreeRDP
 COPY --from=zlib-build /build /build
 COPY --from=openssl-build /build /build
 COPY --from=openh264-build /build /build
@@ -136,16 +136,25 @@ COPY --from=faad2-build /build /build
 COPY --from=opencl-build /build /build
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP
-RUN git fetch; git checkout cbb078a1fbc51f3dc6775f0e9564ee9cf434df34
-COPY patch/mingw32-freerdp.patch /src/patch/
-RUN git apply /src/patch/mingw32-freerdp.patch
+RUN git fetch; git checkout 6abd9165e6a99549d413f0b2ad18c3a7e150a426
+#COPY patch/mingw32-freerdp.patch /src/patch/
+#RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
 ARG ARCH
 RUN /bin/bash -c "( [[ $ARCH == aarch64 ]] && printf 'arm64' || printf $ARCH ) > arch.txt"
+
+RUN sed -i 's/(\*fkt)(void\*)/(*fkt)(int,const char*,void*)/g' /src/FreeRDP/libfreerdp/utils/signal.c
+RUN sed -i 's/#ifndef __MINGW32__/#ifndef __MINGW32__BAD/g' /src/FreeRDP/include/freerdp/codec/audio.h
+RUN sed -i 's/freerdp_library_add(Credui)/freerdp_library_add(credui)/g' ../libfreerdp/utils/CMakeLists.txt
+RUN sed -i 's/if(WIN32)/if(WIN32)\n\tfreerdp_library_add(cfgmgr32)/g' ../libfreerdp/utils/CMakeLists.txt
+RUN sed -i 's/#define winpr_aligned_calloc/#define winpr_aligned_calloc_wronglocation/' ../winpr/include/winpr/crt.h
+RUN sed -i 's/#endif \/\* WINPR_CRT_H \*\//#ifndef _WIN32\n#define winpr_aligned_calloc(count, size, alignment) _aligned_recalloc ( NULL , count, size, alignment )\n#endif\n#endif/' ../winpr/include/winpr/crt.h
+
 RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
              -DWITH_X11=OFF -DWITH_MEDIA_FOUNDATION=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
-             -DWITH_ZLIB=ON -DZLIB_INCLUDE_DIR=/build  \
-             -DWITH_OPENH264=ON -DOPENH264_INCLUDE_DIR=/build/include -DOPENH264_LIBRARY=/build/lib/libopenh264.a \
+             -DUSE_UNWIND=OFF \
+             -DWITH_ZLIB=ON  -DZLIB_INCLUDE_DIR=/build  \
+             -DWITH_OPENH264=ON -DOPENH264_INCLUDE_DIR=/build/include -DOPENH264_LIBRARY=/build/lib/libopenh264.dll.a \
              -DOPENSSL_INCLUDE_DIR=/build/include \
              -DWITH_OPENCL=ON -DOpenCL_INCLUDE_DIR=/build/include -DOpenCL_LIBRARIES=/build/lib/OpenCL.a \
              -DLIBUSB_1_INCLUDE_DIRS=/build/include/libusb-1.0 -DLIBUSB_1_LIBRARIES=/build/lib/libusb-1.0.a \
@@ -153,7 +162,8 @@ RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev 
              -DWITH_FAAD2=ON -DFAAD2_INCLUDE_DIR=/build/include -DFAAD2_LIBRARY=/build/lib/libfaad.a \
              -DWITH_FAAC=ON -DFAAC_INCLUDE_DIR=/build/include -DFAAC_LIBRARY=/build/lib/libfaac.a \
 						 -DCMAKE_SYSTEM_PROCESSOR=$( cat arch.txt ) \
-             -DCMAKE_C_FLAGS=\"${CMAKE_C_FLAGS} -static\" \
+             -DCMAKE_C_FLAGS=\"${CMAKE_C_FLAGS} -static -Wno-error=incompatible-function-pointer-types -DERROR_OPERATION_IN_PROGRESS=0x00000149\" \
 						 "
 RUN cmake --build . -j `nproc`
 RUN cmake --install . 
+RUN cp -a /usr/$ARCH-w64-mingw32/bin/* /build/bin;
